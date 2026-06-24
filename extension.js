@@ -1,4 +1,4 @@
-const { Gio, St, Clutter, Meta } = imports.gi;
+const { Gio, GLib, St, Clutter, Meta } = imports.gi;
 const Main = imports.ui.main;
 const Settings = imports.ui.settings;
 
@@ -45,9 +45,10 @@ class BorderManager {
 
         this._workspaceSwitchId = global.workspace_manager.connect('workspace-switched',
             () => {
-                this._removeAllBorders();
-                let actors = Meta.get_window_actors(global.display);
-                actors.forEach(actor => this._addBorder(actor.meta_window));
+                GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    this._refreshAllBorders();
+                    return GLib.SOURCE_REMOVE;
+                });
             }
         );
 
@@ -91,17 +92,17 @@ class BorderManager {
         }
     }
 
-    _addBorder(metaWindow) {
+    _addBorder(metaWindow, retryCount = 0) {
         if (this._borders.has(metaWindow)) return;
 
         let actor = metaWindow.get_compositor_private();
         if (!actor || !actor.get_parent()) {
-            let id = global.display.connect('window-created', (d, w) => {
-                if (w === metaWindow) {
-                    global.display.disconnect(id);
-                    this._addBorder(metaWindow);
-                }
-            });
+            if (retryCount < 20) {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+                    this._addBorder(metaWindow, retryCount + 1);
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
             return;
         }
 
@@ -206,6 +207,38 @@ class BorderManager {
 
         try { info.border.destroy(); } catch (e) {}
         this._borders.delete(metaWindow);
+    }
+
+    _refreshAllBorders() {
+        let actors = Meta.get_window_actors(global.display);
+        let seen = new Set();
+
+        actors.forEach(actor => {
+            let mw = actor.meta_window;
+            if (!mw) return;
+            seen.add(mw);
+
+            let info = this._borders.get(mw);
+            if (info) {
+                let parent = actor.get_parent();
+                let curParent = info.border.get_parent();
+                if (parent && curParent !== parent) {
+                    if (curParent) {
+                        try { curParent.remove_child(info.border); } catch (e) {}
+                    }
+                    try { parent.insert_child_below(info.border, actor); } catch (e) {}
+                }
+                this._updateBorder(mw);
+            } else {
+                this._addBorder(mw);
+            }
+        });
+
+        this._borders.forEach((info, mw) => {
+            if (!seen.has(mw)) {
+                this._destroyBorder(mw);
+            }
+        });
     }
 
     _updateStyles() {
