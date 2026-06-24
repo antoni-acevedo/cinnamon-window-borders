@@ -145,7 +145,7 @@ class BorderManager {
             );
         }
 
-        this._borders.set(metaWindow, { border, connections });
+        this._borders.set(metaWindow, { border, connections, actor });
         this._updateBorder(metaWindow);
     }
 
@@ -220,6 +220,23 @@ class BorderManager {
 
             let info = this._borders.get(mw);
             if (info) {
+                if (actor !== info.actor) {
+                    info.connections = info.connections.filter(c => {
+                        if (c.obj === info.actor) {
+                            try { info.actor.disconnect(c.id); } catch (e) {}
+                            return false;
+                        }
+                        return true;
+                    });
+                    if (typeof actor.connect === 'function') {
+                        info.connections.push(
+                            { obj: actor, id: actor.connect('notify::visible',
+                                () => { this._updateBorder(mw); }) }
+                        );
+                    }
+                    info.actor = actor;
+                }
+
                 let parent = actor.get_parent();
                 let curParent = info.border.get_parent();
                 if (parent && curParent !== parent) {
