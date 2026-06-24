@@ -22,6 +22,7 @@ class BorderManager {
         this._borders = new Map();
         this._displaySignals = [];
         this._settings = null;
+        this._workspaceSwitchId = 0;
 
         this.borderColor = '#444444';
         this.borderWidth = 3;
@@ -42,12 +43,25 @@ class BorderManager {
                 () => { this._updateAllBorders(); })
         );
 
+        this._workspaceSwitchId = global.workspace_manager.connect('workspace-switched',
+            () => {
+                this._removeAllBorders();
+                let actors = Meta.get_window_actors(global.display);
+                actors.forEach(actor => this._addBorder(actor.meta_window));
+            }
+        );
+
         let actors = Meta.get_window_actors(global.display);
         actors.forEach(actor => this._addBorder(actor.meta_window));
     }
 
     disable() {
         this._removeAllBorders();
+
+        if (this._workspaceSwitchId) {
+            try { global.workspace_manager.disconnect(this._workspaceSwitchId); } catch (e) {}
+            this._workspaceSwitchId = 0;
+        }
 
         this._displaySignals.forEach(id => {
             try { global.display.disconnect(id); } catch (e) {}
