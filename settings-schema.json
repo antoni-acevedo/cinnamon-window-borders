@@ -5,7 +5,7 @@
     },
     "border-color": {
         "type": "colorchooser",
-        "default": "#3584e4",
+        "default": "#444444",
         "description": "Color del borde"
     },
     "border-width": {

@@ -23,7 +23,7 @@ class BorderManager {
         this._displaySignals = [];
         this._settings = null;
 
-        this.borderColor = '#3584e4';
+        this.borderColor = '#444444';
         this.borderWidth = 3;
         this.borderRadius = 12;
         this.hideOnMaximized = false;
