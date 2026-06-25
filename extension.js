@@ -24,9 +24,9 @@ class BorderManager {
         this._settings = null;
         this._workspaceSwitchId = 0;
 
-        this.borderColor = '#444444';
-        this.borderWidth = 3;
-        this.borderRadius = 12;
+        this.borderColor = '#241f31';
+        this.borderWidth = 6;
+        this.borderRadius = 20;
         this.hideOnMaximized = false;
     }
 
