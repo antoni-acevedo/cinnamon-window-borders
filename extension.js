@@ -43,6 +43,11 @@ class BorderManager {
                 () => { this._updateAllBorders(); })
         );
 
+        this._displaySignals.push(
+            global.display.connect('restacked',
+                () => { this._refreshBorderStacking(); })
+        );
+
         this._workspaceSwitchId = global.workspace_manager.connect('workspace-switched',
             () => {
                 GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -254,6 +259,28 @@ class BorderManager {
         this._borders.forEach((info, mw) => {
             if (!seen.has(mw)) {
                 this._destroyBorder(mw);
+            }
+        });
+    }
+
+    _refreshBorderStacking() {
+        let actors = Meta.get_window_actors(global.display);
+        actors.forEach(actor => {
+            let mw = actor.meta_window;
+            if (!mw) return;
+            let info = this._borders.get(mw);
+            if (!info) return;
+            if (!info.border.visible) return;
+
+            let parent = actor.get_parent();
+            let curParent = info.border.get_parent();
+            if (parent && curParent !== parent) {
+                if (curParent) {
+                    try { curParent.remove_child(info.border); } catch (e) {}
+                }
+                try { parent.insert_child_below(info.border, actor); } catch (e) {}
+            } else if (parent) {
+                try { parent.set_child_below_sibling(info.border, actor); } catch (e) {}
             }
         });
     }
